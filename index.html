@@ -388,6 +388,9 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
     <div class="sh">Search for new names</div>
     <div class="pgrid" id="searchgrid"></div>
 
+    <div class="sh">How your list is ordered</div>
+    <div class="plist" id="ranklist"></div>
+
     <div class="sh">Where the ads are</div>
     <div class="plist" id="srclist"></div>
 
@@ -558,6 +561,24 @@ function catPerf(){
     if(isInterest(m.s)) by[r.c].i++;
   });
   return by;
+}
+/* The roadmap ranks sources. A business already buying ads outranks a name off a map. */
+var SRCRANK={
+ "Referral":25,
+ "Runs paid ads":22,
+ "Magazine or flyer ad":20,
+ "Yard sign or vehicle":16,
+ "Walk-in or storefront":15,
+ "Business card":14,
+ "Chamber directory":10,
+ "Other":8,
+ "Google Maps":4
+};
+/* once a source has real volume, my ranking gives way to your results */
+function srcScore(src){
+  var p=srcPerf()[src];
+  if(p && p.w>=10) return ((p.i*3+p.k)/p.w)*25;
+  return SRCRANK[src]!=null ? SRCRANK[src] : 8;
 }
 function srcPerf(){
   var by={};
@@ -1017,14 +1038,15 @@ function render(){
   var perf=catPerf();
   function irate(c){
     var p=perf[c];
-    if(!p || p.w<8) return -1;          // not enough evidence yet
-    return (p.i*3 + p.k) / p.w;
+    if(!p || p.w<8) return 0;           // not enough evidence yet
+    return ((p.i*3 + p.k) / p.w) * 20;
   }
+  function rank(r){ return srcScore(r.src) + irate(r.c); }
   rows.sort(function(a,b){
     var oa=ORD[winOf(a)]||0, ob=ORD[winOf(b)]||0;
     if(oa!==ob) return oa-ob;
-    var ra=irate(a.c), rb=irate(b.c);
-    if(ra!==rb) return rb-ra;            // proven categories first
+    var ra=rank(a), rb=rank(b);
+    if(Math.abs(ra-rb)>0.001) return rb-ra;   // best source and category first
     if(a.c!==b.c) return a.c<b.c?-1:1;
     return a.n.toLowerCase()<b.n.toLowerCase()?-1:1;
   });
@@ -1483,6 +1505,20 @@ function openProspect(){
     + encodeURIComponent('local magazines Sugar Land TX advertise')+'">Local magazines</a>';
   document.getElementById("searchgrid").innerHTML=g;
 
+  var perf=srcPerf();
+  var ranked=DATA.srcs.slice().sort(function(a,b){ return srcScore(b)-srcScore(a); });
+  var rl="";
+  ranked.forEach(function(x){
+    var p=perf[x]||{n:0,w:0,i:0};
+    var learned = p.w>=10;
+    rl+='<div style="display:flex;justify-content:space-between;padding:11px 4px;'
+      + 'border-bottom:1px solid var(--line);font-size:14px">'
+      + '<span>'+esc(x)+(learned?' <b style="color:var(--brass-dp)">your data</b>':'')+'</span>'
+      + '<span style="color:var(--mute)">'+p.n+' on list'+(p.w?' \u00b7 '+pct(p.i,p.w)+'% interested':'')+'</span></div>';
+  });
+  document.getElementById("ranklist").innerHTML=rl
+    + '<div class="thin">Best sources rise to the top of every time block. After ten worked contacts from a source, your own results replace this order.</div>';
+
   var sl="";
   SRC_LINKS.forEach(function(x){
     sl+='<a target="_blank" rel="noopener" href="'+x[1]+'" style="display:flex;justify-content:space-between;'
@@ -1686,7 +1722,7 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 build 5 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 6 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
   rd.textContent="Reset today's stats"; rd.dataset.armed=""; rd.classList.remove("armed");
@@ -1796,6 +1832,7 @@ function priority(r){
   else                  base=55;    // never touched
   var p=catPerf()[r.c];
   if(p && p.w>=8) base += Math.round(((p.i*3+p.k)/p.w)*20);   // proven category rises
+  base += srcScore(r.src);                                    // and a better source outranks a map name
   return base;
 }
 function cycleReady(){
