@@ -602,6 +602,11 @@ function winNow(h){
   return "late";
 }
 function pct(a,b){ return b? Math.round(a/b*100) : 0; }
+function dayLabel(){
+  var d=new Date();
+  return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()]+" "+d.getDate()+" "
+       + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+}
 function todayKey(d){
   d=d||new Date();
   var m=d.getMonth()+1, dy=d.getDate();
@@ -1019,13 +1024,13 @@ function tally(){
   var lf=document.getElementById("left"), lb=document.getElementById("leftlbl"),
       gb=document.getElementById("goal"), fl=document.getElementById("fill");
   if(tgt===0){
-    lf.textContent="\u2014"; lb.textContent="no target today"; gb.className="goal";
+    lf.textContent="\u2014"; lb.textContent="no target \u00b7 "+dayLabel(); gb.className="goal";
     fl.style.width="0%"; fl.className="";
   } else if(rem===0){
-    lf.textContent="0"; lb.textContent="done for today"; gb.className="goal done";
+    lf.textContent="0"; lb.textContent="done \u00b7 "+dayLabel(); gb.className="goal done";
     fl.style.width="100%"; fl.className="done";
   } else {
-    lf.textContent=rem; lb.textContent="left today"; gb.className="goal";
+    lf.textContent=rem; lb.textContent="left \u00b7 "+dayLabel(); gb.className="goal";
     fl.style.width=Math.min(100, made/tgt*100)+"%"; fl.className="";
   }
   var ir=pct(win,done);
@@ -1524,7 +1529,7 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 2 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
   rd.textContent="Reset today's stats"; rd.dataset.armed=""; rd.classList.remove("armed");
