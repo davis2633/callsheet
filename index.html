@@ -127,6 +127,13 @@ input:focus,select:focus{outline:2px solid var(--brass); outline-offset:1px}
 textarea{width:100%; padding:11px 13px; font-size:16px; font-family:inherit; color:var(--ink);
   border:1px solid var(--line); border-radius:9px; background:#fff; resize:vertical}
 textarea:focus{outline:2px solid var(--brass); outline-offset:1px}
+.pgrid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px}
+.pgrid button, .pgrid a{padding:13px 10px; border:1px solid var(--line); border-radius:9px;
+  background:var(--card); font:inherit; font-size:14px; color:var(--ink); text-align:center;
+  text-decoration:none; display:block}
+.rot{background:var(--brass-sf); color:var(--brass-dp); border-radius:10px; padding:12px 14px;
+  font-size:14px; line-height:1.45; margin-bottom:4px}
+.rot b{display:block; font-size:15px; margin-bottom:2px}
 .olist{display:grid; gap:8px; margin-bottom:14px}
 .olist button{display:flex; flex-direction:column; align-items:flex-start; gap:2px;
   padding:12px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card);
@@ -239,6 +246,7 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
 #sched{z-index:60}
 #deal{z-index:62}
 #dupe{z-index:66}
+#prospect{z-index:56}
 #refer{z-index:64}
 #confirm{z-index:70}
 #toast{z-index:80}
@@ -284,7 +292,7 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
 <div class="chips" id="chips"></div>
 <main id="list"></main>
 <footer>
-  <button id="scan">Scan</button>
+  <button id="scan">Prospect</button>
   <button id="next" class="primary">Next uncalled</button>
   <button id="statsbtn">Stats</button>
 </footer>
@@ -347,6 +355,42 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
       <button id="expcopy" class="primary">Copy</button>
     </div>
     <div class="thin">Tap Copy, then paste into a note or email. If Copy does nothing, the text gets selected \u2014 tap Copy on the popup instead. To move your work to another device, paste a backup in here and tap Restore twice.</div>
+  </div>
+</div>
+
+<div class="sheet" id="prospect">
+  <div class="panel">
+    <h2>Prospect</h2>
+    <p class="sub" id="prosub"></p>
+
+    <div class="big"><div><b id="pw_week">0</b><span>added this week</span></div>
+      <div><b id="pw_all">0</b><span>added in total</span></div>
+      <div><b id="pw_rev">0</b><span>need finishing</span></div></div>
+
+    <div class="rot" id="rot"></div>
+
+    <div class="sh">Add</div>
+    <div class="pgrid">
+      <button id="p_one">One business</button>
+      <button id="p_batch">Paste a list</button>
+    </div>
+    <div id="batchwrap" style="display:none">
+      <div class="field"><label for="b_cat">Category for this batch</label><select id="b_cat"></select></div>
+      <div class="field"><label for="b_src">Where they came from</label><select id="b_src"></select></div>
+      <textarea id="b_text" rows="6" placeholder="One per line. Name and phone on the same line, any order.&#10;&#10;Sugar Land Roofing 281-555-0143&#10;Colony Dental, (281) 565-4100&#10;Maria's Bakery 832 555 0199"></textarea>
+      <button class="rbtn wide" id="b_go">Add them all</button>
+    </div>
+
+    <div class="sh">Finish these off</div>
+    <div class="plist" id="revlist"></div>
+
+    <div class="sh">Search for new names</div>
+    <div class="pgrid" id="searchgrid"></div>
+
+    <div class="sh">Where the ads are</div>
+    <div class="plist" id="srclist"></div>
+
+    <div class="actions"><button id="pclose2" class="primary">Done</button></div>
   </div>
 </div>
 
@@ -1313,7 +1357,7 @@ function addReferral(nm, ph, from){
   nm=(nm||"").trim(); if(!nm) return 0;
   if(findDupes(nm, ph, null).length) return -1;
   custom.push({i:"u"+Date.now()+Math.floor(Math.random()*999), n:nm, p:(ph||"").trim(),
-    c:from.c, a:"", o:"", src:"Referral", note:"Referred by "+from.n});
+    c:from.c, a:"", o:"", src:"Referral", note:"Referred by "+from.n, ct:new Date().toISOString()});
   return 1;
 }
 document.getElementById("refskip").addEventListener("click",function(){ refEl.classList.remove("on") });
@@ -1374,7 +1418,118 @@ function setStatus(t,err){
   var s=document.getElementById("status");
   s.textContent=t||""; s.className="status"+(err?" err":"");
 }
-document.getElementById("scan").addEventListener("click",openAdd);
+/* ---------- prospect hub ---------- */
+var proEl=document.getElementById("prospect");
+var ROT=[
+ ["Referrals","Call everyone marked Signed or Interested this week and ask for two names. Best converting source you have."],
+ ["Magazine ads","Community Impact and First Colony Neighbors. Photograph every display ad and scan them in."],
+ ["Walk the centre","Your store's shopping centre plus the two nearest strips. Log every storefront."],
+ ["BNI or a chamber","Visit a chapter as a guest, or harvest another chamber directory."],
+ ["Yard signs","Drive the subdivisions. Roofers, remodellers, lawn crews, pools. Most are on no database."],
+ ["Signage and bulletins","School ball fields, gym banners, church bulletins. Long-term local spenders."]
+];
+var SRC_LINKS=[
+ ["Community Impact \u00b7 Sugar Land","https://communityimpact.com/sugar-land-missouri-city/"],
+ ["First Colony Neighbors","https://www.bestversionmedia.com/tx/firstcolonyneighbors/"],
+ ["Living Magazine \u00b7 Sugar Land","https://www.livingmagazine.net/sugarland/"],
+ ["The Buzz \u00b7 Sugar Land","https://thebuzzmagazines.com/tags/sugar-land"],
+ ["BNI Sugar Land Success \u00b7 South","https://bnihouston.com/tx-houston-south-bni-sugar-land-success/en-US/index"],
+ ["BNI Sugar Land Success \u00b7 West","https://bnihouston.com/tx-houston-west-bni-sugar-land-success/en-US/index"],
+ ["Fort Bend Chamber directory","https://www.fortbendchamber.com/"],
+ ["Meta Ad Library \u00b7 Sugar Land","https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=US&q=Sugar%20Land%20TX"]
+];
+var ZIPS=["77478","77479","77477","77498","77459"];
+function weekNo(){
+  var d=new Date(), a=new Date(d.getFullYear(),0,1);
+  return Math.floor(((d-a)/864e5 + a.getDay()+1)/7);
+}
+function addedThisWeek(){
+  var d=new Date(), day=(d.getDay()+6)%7;
+  var mon=new Date(d); mon.setDate(d.getDate()-day); mon.setHours(0,0,0,0);
+  return custom.filter(function(c){ return c.ct && new Date(c.ct)>=mon; }).length;
+}
+function needsWork(){
+  return custom.filter(function(c){ return !digits(c.p) || !c.c || c.c==="Other"; });
+}
+function openProspect(){
+  var wk=addedThisWeek(), rev=needsWork();
+  document.getElementById("pw_week").textContent=wk;
+  document.getElementById("pw_all").textContent=custom.length;
+  document.getElementById("pw_rev").textContent=rev.length;
+  document.getElementById("prosub").textContent =
+    wk>=40 ? "40 this week. Pipeline is holding."
+           : (40-wk)+" more this week keeps the list level at 65 dials a day.";
+
+  var r=ROT[weekNo()%ROT.length];
+  document.getElementById("rot").innerHTML="<b>This week: "+esc(r[0])+"</b>"+esc(r[1]);
+
+  var h="";
+  rev.slice(0,8).forEach(function(c){
+    h+='<button data-i="'+esc(c.i)+'">'+esc(c.n)
+      +'<span>'+(digits(c.p)?esc(c.c||"no category"):"no phone number")+'</span></button>';
+  });
+  document.getElementById("revlist").innerHTML = h ||
+    '<div class="thin">Nothing half-finished. Anything you scan that is missing a number or a category shows up here.</div>';
+
+  var g="";
+  ZIPS.forEach(function(z){
+    g+='<a target="_blank" rel="noopener" href="https://www.google.com/search?q='
+      + encodeURIComponent('new businesses opening '+z+' Sugar Land TX')+'">New in '+z+'</a>';
+  });
+  g+='<a target="_blank" rel="noopener" href="https://www.google.com/search?q='
+    + encodeURIComponent('"now open" OR "under new management" Sugar Land TX 2026')+'">Now open</a>';
+  g+='<a target="_blank" rel="noopener" href="https://www.google.com/search?q='
+    + encodeURIComponent('local magazines Sugar Land TX advertise')+'">Local magazines</a>';
+  document.getElementById("searchgrid").innerHTML=g;
+
+  var sl="";
+  SRC_LINKS.forEach(function(x){
+    sl+='<a target="_blank" rel="noopener" href="'+x[1]+'" style="display:flex;justify-content:space-between;'
+      + 'padding:13px 4px;border-bottom:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:15px">'
+      + esc(x[0])+'<span style="color:var(--mute)">open</span></a>';
+  });
+  document.getElementById("srclist").innerHTML=sl;
+
+  fillSel("b_cat", catList(), null);
+  fillSel("b_src", DATA.srcs, "Magazine or flyer ad");
+  proEl.classList.add("on");
+}
+function fillSel(id, arr, sel){
+  var h=""; arr.forEach(function(x){ h+='<option value="'+esc(x)+'"'+(x===sel?" selected":"")+'>'+esc(x)+'</option>' });
+  document.getElementById(id).innerHTML=h;
+}
+document.getElementById("scan").addEventListener("click",openProspect);
+document.getElementById("pclose2").addEventListener("click",function(){ proEl.classList.remove("on") });
+proEl.addEventListener("click",function(e){ if(e.target===proEl) proEl.classList.remove("on") });
+document.getElementById("p_one").addEventListener("click",function(){ proEl.classList.remove("on"); openAdd(); });
+document.getElementById("p_batch").addEventListener("click",function(){
+  var w=document.getElementById("batchwrap");
+  w.style.display = w.style.display==="none" ? "block" : "none";
+});
+document.getElementById("revlist").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  proEl.classList.remove("on"); openEdit(b.dataset.i);
+});
+document.getElementById("b_go").addEventListener("click",function(){
+  var lines=document.getElementById("b_text").value.split(/\n+/);
+  var cat=document.getElementById("b_cat").value, src=document.getElementById("b_src").value;
+  var added=0, dup=0, skipped=0;
+  lines.forEach(function(L){
+    L=L.trim(); if(!L) return;
+    var m=L.match(/(\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/);
+    var ph=m?m[0]:"";
+    var nm=L.replace(ph,"").replace(/[,\u2013\u2014\-\s]+$/,"").replace(/^[,\u2013\u2014\-\s]+/,"").trim();
+    if(!nm){ skipped++; return; }
+    if(findDupes(nm, ph, null).length){ dup++; return; }
+    custom.push({i:"u"+Date.now()+Math.floor(Math.random()*9999), n:nm, p:ph,
+                 c:cat, a:"", o:"", src:src, ct:new Date().toISOString()});
+    added++;
+  });
+  if(added){ writeNow(); buildChips(); render(); }
+  document.getElementById("b_text").value="";
+  openProspect();
+  toast(added+" added"+(dup?", "+dup+" already on the list":"")+(skipped?", "+skipped+" unreadable":""));
+});
 
 /* ---------- stats ---------- */
 var statsEl=document.getElementById("stats");
@@ -1529,7 +1684,7 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 build 2 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 3 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
   rd.textContent="Reset today's stats"; rd.dataset.armed=""; rd.classList.remove("armed");
@@ -1861,6 +2016,7 @@ document.getElementById("dupanyway").addEventListener("click",function(){
 });
 function commitAdd(rec){
   rec.i="u"+Date.now();
+  rec.ct=new Date().toISOString();
   custom.push(rec);
   saveAll(); closeSheet(); buildChips(); render();
   toast(storeOK ? "Added \u00b7 "+rec.n
