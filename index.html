@@ -301,11 +301,11 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
   <div class="panel">
     <h2 id="ptitle">Add a business</h2>
     <p class="sub" id="psub">Check what came off the card, then save.</p>
+    <button class="shot wide" id="pastebtn">Paste text from a screenshot</button>
     <div class="shots">
-      <button class="shot" id="shot">Take a photo</button>
-      <button class="shot" id="pick">Upload a screenshot</button>
+      <button class="shot" id="shot">Photo</button>
+      <button class="shot" id="pick">Upload</button>
     </div>
-    <button class="shot wide" id="pastebtn">Paste text instead</button>
     <div id="pastewrap" style="display:none">
       <textarea id="f_paste" rows="4" placeholder="Long-press the screenshot in Photos, select the text, copy, then paste here"></textarea>
       <button class="rbtn wide" id="parsebtn">Pull out the details</button>
@@ -375,7 +375,8 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
       <button id="p_batch">Paste a list</button>
     </div>
     <div id="batchwrap" style="display:none">
-      <div class="field"><label for="b_cat">Category for this batch</label><select id="b_cat"></select></div>
+      <div class="field"><label for="b_cat">Fallback category</label><select id="b_cat"></select>
+        <div class="thin">Each line is classified from its own wording. This is only used when there is no clue.</div></div>
       <div class="field"><label for="b_src">Where they came from</label><select id="b_src"></select></div>
       <textarea id="b_text" rows="6" placeholder="One per line. Name and phone on the same line, any order.&#10;&#10;Sugar Land Roofing 281-555-0143&#10;Colony Dental, (281) 565-4100&#10;Maria's Bakery 832 555 0199"></textarea>
       <button class="rbtn wide" id="b_go">Add them all</button>
@@ -1376,7 +1377,7 @@ document.getElementById("refsave").addEventListener("click",function(){
 function openAdd(){
   editing=null; pendingImg=null;
   document.getElementById("ptitle").textContent="Add a business";
-  document.getElementById("psub").textContent="Photograph a card, upload a screenshot, or just type it in.";
+  document.getElementById("psub").textContent="Copy the text off a screenshot and paste it in, or type it yourself.";
   document.getElementById("shot").style.display="block";
   document.getElementById("errbtn").style.display="none";
   document.getElementById("pastewrap").style.display="none";
@@ -1521,8 +1522,9 @@ document.getElementById("b_go").addEventListener("click",function(){
     var nm=L.replace(ph,"").replace(/[,\u2013\u2014\-\s]+$/,"").replace(/^[,\u2013\u2014\-\s]+/,"").trim();
     if(!nm){ skipped++; return; }
     if(findDupes(nm, ph, null).length){ dup++; return; }
+    var g=guessCat(L) || cat;
     custom.push({i:"u"+Date.now()+Math.floor(Math.random()*9999), n:nm, p:ph,
-                 c:cat, a:"", o:"", src:src, ct:new Date().toISOString()});
+                 c:g, a:"", o:"", src:src, ct:new Date().toISOString()});
     added++;
   });
   if(added){ writeNow(); buildChips(); render(); }
@@ -1684,7 +1686,7 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 build 3 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 5 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
   rd.textContent="Reset today's stats"; rd.dataset.armed=""; rd.classList.remove("armed");
@@ -2054,25 +2056,76 @@ document.getElementById("del").addEventListener("click",function(){
 
 /* ---------- scan ---------- */
 /* local parser: no network, works anywhere */
+var CATKW={"A/C, heating, plumbing": ["plumbing", "plumber", "hvac", "air conditioning", "heating", "furnace", "water heater", "drain", "sewer", "a/c", "ac repair", "cooling"], "Electrical": ["electric", "electrician", "electrical", "wiring", "panel upgrade"], "Roofing": ["roofing", "roofer", "roof repair", "shingle", "re-roof"], "Painting": ["painting", "painter", "paint co", "interior painting", "exterior painting"], "Fencing / decks": ["fence", "fencing", "deck builder", "decks"], "Flooring": ["flooring", "floors", "hardwood", "laminate", "tile install", "carpet one"], "Garage door": ["garage door", "overhead door"], "Appliance repair": ["appliance repair", "appliance service"], "Home improvement / remodel": ["remodel", "renovation", "construction", "home improvement", "kitchen and bath", "handyman", "wallcovering"], "Foundation repair": ["foundation repair", "slab repair", "pier and beam"], "Restoration (fire/water/mold)": ["restoration", "water damage", "fire damage", "mold remediation", "servpro"], "Pressure washing / exterior": ["pressure wash", "power wash", "soft wash", "exterior cleaning"], "Lawn care / landscaping": ["lawn", "landscap", "mowing", "tree service", "irrigation", "sprinkler"], "Pool service": ["pool service", "pool cleaning", "pool maintenance", "swimming pool"], "Pest control": ["pest control", "exterminat", "termite", "mosquito"], "Residential cleaning": ["maid", "house cleaning", "cleaning service", "janitorial", "housekeeping"], "Carpet cleaning": ["carpet clean", "rug clean", "upholstery clean", "steam clean"], "Auto repair / tire": ["auto repair", "automotive", "tire", "oil change", "brake", "muffler", "transmission", "car care", "mechanic"], "Auto body": ["auto body", "collision", "body shop", "paint and body", "dent repair"], "Window tint / detailing": ["window tint", "tinting", "auto detail", "mobile detail", "ceramic coating"], "Car wash": ["car wash", "carwash", "express wash"], "Dry cleaners": ["dry clean", "cleaners", "laundromat", "alterations"], "Storage": ["self storage", "storage units", "mini storage", "cubesmart", "extra space"], "Packing / shipping": ["ups store", "shipping", "pack and ship", "mailbox", "postal"], "Hardware store": ["hardware", "lumber", "ace hardware", "tool"], "Plant nursery": ["nursery", "garden center", "greenhouse", "plants"], "Furniture / mattress": ["furniture", "mattress", "sofa", "bedding"], "Boutique / clothing": ["boutique", "clothing", "apparel", "fashion", "wearhouse"], "Gift shop": ["gift shop", "gifts", "novelty", "toys"], "Jewelry store": ["jewelry", "jewelers", "diamond", "fine jewel"], "Consignment / resale": ["consignment", "resale", "thrift", "uptown cheapskate"], "Barbershop": ["barber", "barbershop", "barber club", "fades", "grooming lounge", "men's cuts"], "Hair / beauty salon": ["hair salon", "salon", "hair studio", "blow dry", "blow bar", "stylist", "color salon", "hairdress"], "Nail salon": ["nail", "nails", "manicure", "pedicure", "nail bar", "nail spa"], "Lash / brow studio": ["lash", "brow", "eyelash", "microblading", "threading"], "Massage therapy": ["massage", "bodywork", "thai massage", "foot spa"], "Med spa / aesthetics": ["med spa", "medspa", "medical spa", "botox", "filler", "aesthetics", "injectable", "skin clinic", "laser hair"], "Weight loss / wellness": ["weight loss", "wellness center", "hormone", "iv therapy", "semaglutide"], "Dentist": ["dental", "dentist", "dentistry", "smile", "teeth", "implant"], "Orthodontist": ["orthodont", "braces", "invisalign"], "Chiropractic": ["chiropract", "spine", "adjustment", "the joint"], "Optometry / eye care": ["optometr", "eye care", "eyecare", "vision", "optical", "eye institute"], "Physical therapy": ["physical therapy", "physiotherapy", "rehab", "sports therapy", "fyzical"], "Medical clinic": ["family practice", "primary care", "clinic", "urgent care", "physician", "medical group"], "Attorney": ["law firm", "attorney", "lawyer", "law office", "legal", "esq", "law, p", "pllc law"], "Insurance agent": ["insurance", "state farm", "allstate", "farmers agent", "goosehead"], "Mortgage lender": ["mortgage", "home lending", "loan officer", "nmls"], "Real estate agent": ["realtor", "real estate", "realty", "re/max", "keller williams", "coldwell", "broker"], "Child care / early learning": ["child care", "childcare", "preschool", "daycare", "learning academy", "montessori", "early learning", "kids r kids", "primrose"], "Tutoring / enrichment": ["tutor", "tutoring", "learning center", "test prep", "mathnasium", "kumon", "enrichment"], "Dance / martial arts": ["dance", "martial arts", "karate", "taekwondo", "jiu jitsu", "gymnastics", "ballet", "cheer"], "Fitness / training studio": ["fitness", "gym", "personal training", "pilates", "crossfit", "yoga", "hotworx", "body20"], "Photography": ["photograph", "photo studio", "portraits", "headshots"], "Pet services": ["pet grooming", "dog grooming", "boarding", "veterinar", "animal hospital", "doggy"], "Restaurant": ["restaurant", "grill", "kitchen", "cafe", "bistro", "pizza", "taco", "bbq", "bar-b-que", "barbecue", "sushi", "ramen", "burger", "deli", "diner", "steakhouse", "catering menu", "eatery", "cuisine"], "Caterer": ["catering", "caterer"], "Coffee shop": ["coffee", "espresso", "roaster", "cafe latte"], "Ice cream / yogurt": ["ice cream", "frozen yogurt", "gelato", "paletas", "creamery"], "Smoothie / nutrition": ["smoothie", "juice bar", "acai", "nutrition shop", "protein"]};
+function guessCat(text){
+  var t=" "+String(text||"").toLowerCase().replace(/\s+/g," ")+" ";
+  var best="", score=0;
+  for(var c in CATKW){
+    var words=CATKW[c], s=0;
+    for(var i=0;i<words.length;i++){
+      if(t.indexOf(words[i])>=0) s += words[i].length>8 ? 3 : 2;
+    }
+    if(s>score){ score=s; best=c; }
+  }
+  return score>=2 ? best : "";
+}
 function parseText(t){
-  var lines=t.split(/\n+/).map(function(x){return x.trim()}).filter(Boolean);
-  var junk=/^(sponsored|active|inactive|learn more|shop now|book now|call now|send message|see ad details|library id|started running|platforms|open|like|comment|share|meta|facebook|instagram|all ads|united states|results|filters|sort by|ad details|see more)/i;
-  var phone=(t.match(/(\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/)||[])[0]||"";
-  var addr="";
+  var JUNK=/^(location|locations|areas? we serve|contact us|contact|about us|about|home|menu|services|our services|gallery|reviews|testimonials|hours|opening hours|book now|book online|book|directions|get directions|call us|call now|email|address|phone|tel|follow us|social|find us|welcome|search|shop|blog|news|faq|privacy|terms|copyright|all rights reserved|sponsored|active|inactive|learn more|shop now|send message|see ad details|library id|started running|platforms|open|like|comment|share|meta|facebook|instagram|twitter|youtube|tiktok|linkedin|all ads|united states|results|filters|sort by|see more|read more|submit|sign up|subscribe|newsletter|close|back|next|previous|skip)\b/i;
+  var ADDR=/\d{2,}\s+\w+.*\b(st|street|ave|avenue|rd|road|blvd|dr|drive|ln|lane|hwy|highway|pkwy|parkway|ste|suite|fwy|freeway|way|ct|court|cir|circle|plaza|trail|trl)\b/i;
+  var ZIP=/\b\d{5}(-\d{4})?\b/;
+  var PH=/(\+?1[\s.\-]?)?(\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/;
+  var DOM=/(?:https?:\/\/)?(?:www\.)?([a-z0-9\-]+)\.(?:com|net|org|co|us|biz)/i;
+  var EM=/[\w.\-]+@([a-z0-9\-]+)\./i;
+  var FLUFF=/\b(your|our|we|us|the best|welcome|discover|starts|path|serving|call|visit)\b/i;
+
+  function clean(x){
+    x=x.replace(/[^\x20-\x7E]/g,"");      /* drop anything that is not plain text */
+    return x.replace(/\s{2,}/g," ").replace(/^[\s.,\-|]+|[\s.,\-|]+$/g,"");
+  }
+  function nrm(x){ return String(x||"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+  function subseq(a,b){
+    if(!a||!b||a.length<4) return false;
+    var i=0;
+    for(var j=0;j<b.length;j++){ if(i<a.length && a[i]===b[j]) i++; }
+    return i===a.length;
+  }
+
+  var lines=t.split(/\n+/).map(clean).filter(Boolean);
+  var pm=t.match(PH);
+  var phone = pm ? pm[0].replace(/^\+?1[\s.\-]*/,"").trim() : "";
+
+  var addr="", ai=-1;
   for(var i=0;i<lines.length;i++){
-    if(/\d{3,}\s+\w+|\b(st|ave|rd|blvd|dr|ln|hwy|pkwy|ste|suite|fwy|way|ct)\b/i.test(lines[i])
-       && /\d/.test(lines[i]) && lines[i].length<80 && !junk.test(lines[i])){ addr=lines[i]; break; }
+    var L=lines[i];
+    if(JUNK.test(L)) continue;
+    if(ADDR.test(L) && L.length<120){ addr=L; ai=i; if(ZIP.test(L)) break; }
   }
-  var name="";
-  for(var j=0;j<lines.length;j++){
-    var L=lines[j];
-    if(junk.test(L)) continue;
-    if(/^\d/.test(L)) continue;
-    if(/^https?:|www\.|\.com$/i.test(L)) continue;
-    if(L.length<3 || L.length>60) continue;
-    name=L; break;
+
+  var hint="";
+  var dm=t.match(EM)||t.match(DOM);
+  if(dm) hint=nrm(dm[1]);
+
+  var best="", bestScore=-99;
+  for(var k=0;k<lines.length;k++){
+    var l=lines[k];
+    if(JUNK.test(l)) continue;
+    if(PH.test(l) && l.length<25) continue;
+    if(l.indexOf("@")>=0 || DOM.test(l.split(" ")[0])) continue;
+    if(l.length<3 || l.length>60) continue;
+    var w=l.split(/\s+/), sc=0;
+    if(ai>=0 && k===ai-1) sc+=4;
+    if(hint && nrm(l) && (nrm(l).indexOf(hint)>=0 || hint.indexOf(nrm(l))>=0)) sc+=5;
+    if(hint && subseq(nrm(l),hint)) sc+=4;
+    if(w.length>=2 && w.length<=5) sc+=2;
+    if(w.length===1) sc-=2;
+    if(l===l.toUpperCase() && w.length===1) sc-=2;
+    if(/\d/.test(l)) sc-=2;
+    if(w.length>5) sc-=3;
+    if(FLUFF.test(l)) sc-=3;
+    sc-=k*0.1;
+    if(sc>bestScore){ bestScore=sc; best=l; }
   }
-  return {name:name, phone:phone, address:addr};
+  return {name:best, phone:phone, address:addr, cat:guessCat(t)};
 }
 document.getElementById("pastebtn").addEventListener("click",function(){
   var w=document.getElementById("pastewrap");
@@ -2087,10 +2140,12 @@ document.getElementById("parsebtn").addEventListener("click",function(){
   if(o.name) document.getElementById("f_n").value=o.name;
   if(o.phone) document.getElementById("f_p").value=o.phone;
   if(o.address) document.getElementById("f_a").value=o.address;
+  if(o.cat) fillCats(o.cat);
   if(!o.name && !o.phone){ setStatus("Could not spot a name or number. Type them in.",true); return; }
   var dp=findDupes(o.name||"", o.phone||"", null);
   setStatus(dp.length ? "Careful: "+dp[0].n+" is already on your sheet."
-                      : "Pulled out what I could. Check it, then save.", dp.length>0);
+            : (o.cat ? "Read it as "+o.cat+". Check it, then save."
+                     : "Got the details. Pick a category, then save."), dp.length>0);
 });
 
 document.getElementById("errbtn").addEventListener("click",function(){
