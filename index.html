@@ -302,11 +302,11 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
     <h2 id="ptitle">Add a business</h2>
     <p class="sub" id="psub">Check what came off the card, then save.</p>
     <button class="shot wide" id="herebtn">I am standing outside it</button>
-    <button class="shot wide" id="pastebtn">Paste text from a screenshot</button>
     <div class="shots">
-      <button class="shot" id="shot">Photo</button>
-      <button class="shot" id="pick">Upload</button>
+      <button class="shot" id="shot">Photograph an ad</button>
+      <button class="shot" id="pick">Upload a screenshot</button>
     </div>
+    <button class="shot wide" id="pastebtn">Or paste text yourself</button>
     <div id="nearwrap" style="display:none">
       <div class="plist" id="nearlist"></div>
     </div>
@@ -1403,7 +1403,7 @@ document.getElementById("refsave").addEventListener("click",function(){
 function openAdd(){
   editing=null; pendingImg=null;
   document.getElementById("ptitle").textContent="Add a business";
-  document.getElementById("psub").textContent="Copy the text off a screenshot and paste it in, or type it yourself.";
+  document.getElementById("psub").textContent="Photograph an ad and it reads the details off it.";
   document.getElementById("shot").style.display="block";
   document.getElementById("errbtn").style.display="none";
   document.getElementById("pastewrap").style.display="none";
@@ -1729,7 +1729,7 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 build 7 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 8 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
   rd.textContent="Reset today's stats"; rd.dataset.armed=""; rd.classList.remove("armed");
@@ -2282,14 +2282,32 @@ function handleImage(e){
   e.target.value="";
   if(!f) return;
   pendingFile=f;
-  setStatus("Reading it...");
-  shrink(f,function(b64,mime){
-    if(!b64){ setStatus("Could not read that image. Type it in instead.",true); return; }
-    ask(b64,mime);
-  });
+  setStatus("Preparing the image\u2026");
+  shrinkUrl(f, function(url){
+    if(!url){ setStatus("Could not open that image. Type it in instead.",true); return; }
+    readImage(url);
+  }, 1600);
 }
 document.getElementById("file").addEventListener("change",handleImage);
 document.getElementById("file2").addEventListener("change",handleImage);
+function shrinkUrl(file, cb, max){
+  var fr=new FileReader();
+  fr.onerror=function(){ cb(null) };
+  fr.onload=function(){
+    var img=new Image();
+    img.onerror=function(){ cb(null) };
+    img.onload=function(){
+      var w=img.width, h=img.height, s=Math.min(1,(max||1600)/Math.max(w,h));
+      var c=document.createElement("canvas");
+      c.width=Math.round(w*s); c.height=Math.round(h*s);
+      var x=c.getContext("2d");
+      x.drawImage(img,0,0,c.width,c.height);
+      cb(c.toDataURL("image/png"));
+    };
+    img.src=fr.result;
+  };
+  fr.readAsDataURL(file);
+}
 function shrink(file,cb,maxOverride){
   var fr=new FileReader();
   fr.onerror=function(){ cb(null) };
@@ -2309,65 +2327,67 @@ function shrink(file,cb,maxOverride){
   };
   fr.readAsDataURL(file);
 }
-function ask(b64,mime,retry){
-  var prompt2 = "Read this image and pull out the business contact details. It may be a business card, a flyer, "
-    + "a storefront sign, a yard sign, or a phone screenshot of a Facebook, Instagram or Google advert, "
-    + "an ad library listing, or a search results page. If it is a screenshot of an advert, take the advertiser "
-    + "or Page name as the business name and read any phone number out of the ad copy. Ignore Meta, Facebook, "
-    + "Google, Sponsored, Active, Library ID, Learn More and other interface text.\n"
-    + "Respond with ONLY a JSON object and nothing else. No markdown fences, no explanation.\n"
-    + '{"name":"","contact":"","phone":"","address":"","category":"","source":""}\n'
-    + "name is the business name. contact is the person named on the card, empty if none. "
-    + "phone is the main number formatted like 281-555-0100, empty if none. "
-    + "address is street plus city, state and ZIP if shown, empty if none. "
-    + "category must be the closest match from this list: " + catList().join("; ") + ". "
-    + "source describes what the photo is: use exactly one of Business card, Magazine or flyer ad, "
-    + "Runs paid ads, Yard sign or vehicle, Walk-in or storefront, Other. "
-    + "Choose Runs paid ads if it is a screenshot of an advert or an ad library listing. "
-    + "Use an empty string for anything you cannot read.";
-  var kb=Math.round(b64.length*0.75/1024);
-  setStatus("Reading it \u00b7 "+kb+"KB\u2026");
-  var status=0;
-  fetch("https://api.anthropic.com/v1/messages",{
-    method:"POST",
-    headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01"},
-    body:JSON.stringify({
-      model:"claude-sonnet-4-6", max_tokens:1000,
-      messages:[{role:"user",content:[
-        {type:"image",source:{type:"base64",media_type:mime,data:b64}},
-        {type:"text",text:prompt2}]}]
-    })
-  }).then(function(r){ status=r.status; return r.text(); })
-   .then(function(raw){
-      var d;
-      try{ d=JSON.parse(raw); }
-      catch(e){
-        if(!raw && !retry && pendingFile){ setStatus("Retrying smaller\u2026"); shrink(pendingFile,function(b2,m2){ ask(b2,m2,1) },600); return; }
-        throw new Error("HTTP "+status+(raw?" \u00b7 not JSON \u00b7 "+raw.slice(0,90):" \u00b7 empty response"));
+/* Text recognition runs on the phone. The library loads once from a CDN and is
+   then cached, so it works offline afterwards. Nothing is sent anywhere. */
+var ocrWorker=null, ocrLoading=false;
+function loadOCR(cb){
+  if(window.Tesseract) return cb(true);
+  if(ocrLoading) return setTimeout(function(){ loadOCR(cb) }, 400);
+  ocrLoading=true;
+  var sc=document.createElement("script");
+  sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+  sc.onload=function(){ ocrLoading=false; cb(true); };
+  sc.onerror=function(){ ocrLoading=false; cb(false); };
+  document.head.appendChild(sc);
+}
+function readImage(dataUrl){
+  setStatus("Loading the reader, this is a one off\u2026");
+  loadOCR(function(ok){
+    if(!ok){
+      setStatus("Could not load the reader. Copy the text off the photo and use Paste instead.", true);
+      document.getElementById("pastewrap").style.display="block";
+      return;
+    }
+    setStatus("Reading the image\u2026");
+    var done=false;
+    var t=setTimeout(function(){
+      if(!done) setStatus("Still reading, big images take a moment\u2026");
+    }, 4000);
+    window.Tesseract.recognize(dataUrl, "eng", {
+      logger:function(m){
+        if(m.status==="recognizing text" && m.progress)
+          setStatus("Reading \u00b7 "+Math.round(m.progress*100)+"%");
       }
-      if(d.error) throw new Error("HTTP "+status+" \u00b7 "+(d.error.message||d.error.type||"api error"));
-      if(!d.content) throw new Error("HTTP "+status+" \u00b7 no content \u00b7 "+JSON.stringify(d).slice(0,90));
-      var txt=d.content.map(function(x){return x.type==="text"?x.text:""}).join("");
-      var clean=txt.replace(/```json/g,"").replace(/```/g,"").trim();
-      var m=clean.match(/\{[\s\S]*\}/);
-      if(!m && !clean) throw new Error("empty reply");
-      var o=JSON.parse(m?m[0]:clean);
-      document.getElementById("f_n").value=o.name||"";
-      document.getElementById("f_p").value=o.phone||"";
-      document.getElementById("f_a").value=o.address||"";
-      document.getElementById("f_o").value=o.contact||"";
-      fillCats(o.category||null);
-      fillSrc(DATA.srcs.indexOf(o.source)>=0 ? o.source : "Business card");
-      if(!o.name && !o.phone){ setStatus("Nothing readable in that image. Try a tighter crop.",true); return; }
+    }).then(function(res){
+      done=true; clearTimeout(t);
+      var txt=(res && res.data && res.data.text) || "";
+      if(txt.replace(/\s/g,"").length<6){
+        setStatus("Could not make out any text. Try a tighter, brighter shot.", true);
+        return;
+      }
+      document.getElementById("f_paste").value=txt;
+      document.getElementById("pastewrap").style.display="block";
+      var o=parseText(txt);
+      if(o.name)    document.getElementById("f_n").value=o.name;
+      if(o.phone)   document.getElementById("f_p").value=o.phone;
+      if(o.address) document.getElementById("f_a").value=o.address;
+      if(o.cat)     fillCats(o.cat);
+      if(!o.name && !o.phone){
+        setStatus("Read the image but could not pick out a name or number. The raw text is below.", true);
+        return;
+      }
       var dp=findDupes(o.name||"", o.phone||"", null);
-      if(dp.length) setStatus("Careful: "+dp[0].n+" is already on your sheet.", true);
-      else setStatus("Read it. Check the details, then save.");
-   })
-   .catch(function(err){
-      lastErr = (err && err.message) ? err.message : "network failed";
+      setStatus(dp.length ? "Careful: "+dp[0].n+" is already on your sheet."
+                : (o.cat ? "Read it as "+o.cat+". Check it, then save."
+                         : "Got the details. Pick a category, then save."), dp.length>0);
+    }).catch(function(e){
+      done=true; clearTimeout(t);
+      lastErr=(e&&e.message)?e.message:"reader failed";
       setStatus("Could not read it. "+lastErr, true);
       document.getElementById("errbtn").style.display="inline";
-   });
+      document.getElementById("pastewrap").style.display="block";
+    });
+  });
 }
 
 /* ---------- manifest + boot ---------- */
