@@ -1729,7 +1729,7 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 build 9 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 10 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
   rd.textContent="Reset today's stats"; rd.dataset.armed=""; rd.classList.remove("armed");
@@ -2127,6 +2127,25 @@ function parseText(t){
     return x.replace(/\s{2,}/g," ").replace(/^[\s.,\-|]+|[\s.,\-|]+$/g,"");
   }
   function nrm(x){ return String(x||"").toLowerCase().replace(/[^a-z0-9]/g,""); }
+  var BADCH=/[^A-Za-z0-9 &'.,\/\-]/;
+  var VOW=/[aeiouAEIOU]/;
+  function realText(x){
+    var v=String(x||"").trim();
+    if(v.length<4) return false;
+    if(BADCH.test(v)) return false;
+    var letters=(v.match(/[A-Za-z]/g)||[]).length;
+    if(letters<6) return false;
+    if(letters/v.length < 0.72) return false;
+    var toks=v.split(/\s+/).filter(Boolean);
+    if(!toks.length) return false;
+    var shortN=0, realN=0;
+    for(var q=0;q<toks.length;q++){
+      if(toks[q].length<=2) shortN++;
+      if(toks[q].length>=3 && VOW.test(toks[q])) realN++;
+    }
+    if(shortN/toks.length > 0.4) return false;
+    return realN>0;
+  }
   function subseq(a,b){
     if(!a||!b||a.length<4) return false;
     var i=0;
@@ -2146,13 +2165,13 @@ function parseText(t){
     if(ADDR.test(L) && L.length<120){ ai=i; if(ZIP.test(L)) break; }
   }
 
-  var TITLE=/\b(owner|president|founder|ceo|principal|partner|manager|director|agent|realtor|broker|attorney|esq|dds|dmd|md|do|dc|od|lmt|cpa|proprietor|stylist|barber)\b/i;
-  var BIZ=/\b(llc|inc|co|company|corp|group|services|service|salon|dental|clinic|shop|store|studio|spa|bar|grill|cafe|kitchen|plumbing|roofing|electric|law|firm|realty|insurance|auto|repair|center|centre|academy|gym|fitness)\b/i;
-  var PERSON=/^(Dr\.?|Mr\.?|Mrs\.?|Ms\.?)?\s*[A-Z][a-z]{1,15}(\s+[A-Z]\.?)?\s+[A-Z][a-z'\-]{1,20}(,?\s+(Jr|Sr|II|III|DDS|MD|DC|CPA|Esq)\.?)?$/;
+  var TITLE=/\b(owner|president|founder|ceo|principal|partner|manager|director|agent|realtor|broker|attorney|esq|dds|dmd|md|do|dc|od|lmt|cpa|proprietor)\b/i;
+  var BIZ=/\b(llc|inc|co|company|corp|group|services|service|salon|barber|barbershop|club|dental|dentistry|clinic|shop|store|studio|spa|bar|grill|kitchen|cafe|bistro|pizza|plumbing|roofing|electric|electrical|law|firm|realty|properties|homes|insurance|auto|repair|tire|center|centre|academy|gym|fitness|wellness|medical|design|floors|flooring|glass|team|associates|partners)\b/i;
+  var PERSON=/^(Dr\.?|Mr\.?|Mrs\.?|Ms\.?)?\s*([A-Z][a-z]{1,15}|[A-Z]{2,15})(\s+([A-Z]\.?|[A-Z][a-z]{1,12}))?\s+([A-Z][a-z'\-]{1,20}|[A-Z][A-Z'\-]{1,20})(,?\s+(Jr|Sr|II|III|DDS|MD|DC|CPA|Esq)\.?)?$/;
   var person="";
   for(var pi=0; pi<lines.length; pi++){
     var pl=lines[pi];
-    if(BIZ.test(pl) || !PERSON.test(pl)) continue;
+    if(!realText(pl) || BIZ.test(pl) || !PERSON.test(pl)) continue;
     var near=lines.slice(Math.max(0,pi-1), pi+2).join(" ");
     var psc=(TITLE.test(near)?2:0) + (pl.split(/\s+/).length<=4?1:0);
     if(psc>=2){ person=pl; break; }
@@ -2162,6 +2181,8 @@ function parseText(t){
   var dm=t.match(EM)||t.match(DOM);
   if(dm) hint=nrm(dm[1]);
 
+  var pi_line=-1;
+  for(var z=0;z<lines.length;z++){ if(PH.test(lines[z])){ pi_line=z; break; } }
   var best="", bestScore=-99;
   for(var k=0;k<lines.length;k++){
     var l=lines[k];
@@ -2170,8 +2191,10 @@ function parseText(t){
     if(l.indexOf("@")>=0 || DOM.test(l.split(" ")[0])) continue;
     if(person && l===person) continue;              /* a person is not the business */
     if(l.length<3 || l.length>60) continue;
+    if(!realText(l)) continue;                      /* drop reader noise */
     var w=l.split(/\s+/), sc=0;
     if(ai>=0 && k===ai-1) sc+=4;
+    if(pi_line>=0 && Math.abs(k-pi_line)<=2) sc+=3;   /* close to the phone number */
     if(hint && nrm(l) && (nrm(l).indexOf(hint)>=0 || hint.indexOf(nrm(l))>=0)) sc+=5;
     if(hint && subseq(nrm(l),hint)) sc+=4;
     if(w.length>=2 && w.length<=5) sc+=2;
@@ -2304,6 +2327,29 @@ function handleImage(e){
 }
 document.getElementById("file").addEventListener("change",handleImage);
 document.getElementById("file2").addEventListener("change",handleImage);
+/* Signs and banners are usually light text on a dark background, which the
+   reader handles badly. Convert to greyscale, invert if dark, stretch contrast. */
+function prepImage(canvas){
+  var x=canvas.getContext("2d");
+  var d=x.getImageData(0,0,canvas.width,canvas.height), p=d.data, sum=0;
+  for(var i=0;i<p.length;i+=4){
+    var g=(p[i]*0.299+p[i+1]*0.587+p[i+2]*0.114)|0;
+    p[i]=p[i+1]=p[i+2]=g; sum+=g;
+  }
+  var mean=sum/(p.length/4);
+  var invert = mean < 115;
+  var lo=255, hi=0;
+  for(var j=0;j<p.length;j+=4){ if(p[j]<lo) lo=p[j]; if(p[j]>hi) hi=p[j]; }
+  var span=Math.max(1, hi-lo);
+  for(var k=0;k<p.length;k+=4){
+    var v=((p[k]-lo)/span)*255;
+    if(invert) v=255-v;
+    v = v<0?0 : v>255?255 : v;
+    p[k]=p[k+1]=p[k+2]=v;
+  }
+  x.putImageData(d,0,0);
+  return invert;
+}
 function shrinkUrl(file, cb, max){
   var fr=new FileReader();
   fr.onerror=function(){ cb(null) };
@@ -2316,7 +2362,8 @@ function shrinkUrl(file, cb, max){
       c.width=Math.round(w*s); c.height=Math.round(h*s);
       var x=c.getContext("2d");
       x.drawImage(img,0,0,c.width,c.height);
-      cb(c.toDataURL("image/png"));
+      var inv=prepImage(c);
+      cb(c.toDataURL("image/png"), inv);
     };
     img.src=fr.result;
   };
@@ -2375,7 +2422,8 @@ function readImage(dataUrl){
     }).then(function(res){
       done=true; clearTimeout(t);
       var txt=(res && res.data && res.data.text) || "";
-      if(txt.replace(/\s/g,"").length<6){
+      var usable=txt.split(/\n+/).filter(function(L){ return L.trim().length>3; }).length;
+      if(txt.replace(/\s/g,"").length<6 || usable<1){
         setStatus("Could not make out any text. Try a tighter, brighter shot.", true);
         return;
       }
