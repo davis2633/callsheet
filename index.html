@@ -1729,7 +1729,7 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 build 8 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 9 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
   rd.textContent="Reset today's stats"; rd.dataset.armed=""; rd.classList.remove("armed");
@@ -2138,11 +2138,24 @@ function parseText(t){
   var pm=t.match(PH);
   var phone = pm ? pm[0].replace(/^\+?1[\s.\-]*/,"").trim() : "";
 
-  var addr="", ai=-1;
+  /* the address line is still located, but only as an anchor for the name */
+  var ai=-1;
   for(var i=0;i<lines.length;i++){
     var L=lines[i];
     if(JUNK.test(L)) continue;
-    if(ADDR.test(L) && L.length<120){ addr=L; ai=i; if(ZIP.test(L)) break; }
+    if(ADDR.test(L) && L.length<120){ ai=i; if(ZIP.test(L)) break; }
+  }
+
+  var TITLE=/\b(owner|president|founder|ceo|principal|partner|manager|director|agent|realtor|broker|attorney|esq|dds|dmd|md|do|dc|od|lmt|cpa|proprietor|stylist|barber)\b/i;
+  var BIZ=/\b(llc|inc|co|company|corp|group|services|service|salon|dental|clinic|shop|store|studio|spa|bar|grill|cafe|kitchen|plumbing|roofing|electric|law|firm|realty|insurance|auto|repair|center|centre|academy|gym|fitness)\b/i;
+  var PERSON=/^(Dr\.?|Mr\.?|Mrs\.?|Ms\.?)?\s*[A-Z][a-z]{1,15}(\s+[A-Z]\.?)?\s+[A-Z][a-z'\-]{1,20}(,?\s+(Jr|Sr|II|III|DDS|MD|DC|CPA|Esq)\.?)?$/;
+  var person="";
+  for(var pi=0; pi<lines.length; pi++){
+    var pl=lines[pi];
+    if(BIZ.test(pl) || !PERSON.test(pl)) continue;
+    var near=lines.slice(Math.max(0,pi-1), pi+2).join(" ");
+    var psc=(TITLE.test(near)?2:0) + (pl.split(/\s+/).length<=4?1:0);
+    if(psc>=2){ person=pl; break; }
   }
 
   var hint="";
@@ -2155,6 +2168,7 @@ function parseText(t){
     if(JUNK.test(l)) continue;
     if(PH.test(l) && l.length<25) continue;
     if(l.indexOf("@")>=0 || DOM.test(l.split(" ")[0])) continue;
+    if(person && l===person) continue;              /* a person is not the business */
     if(l.length<3 || l.length>60) continue;
     var w=l.split(/\s+/), sc=0;
     if(ai>=0 && k===ai-1) sc+=4;
@@ -2169,7 +2183,7 @@ function parseText(t){
     sc-=k*0.1;
     if(sc>bestScore){ bestScore=sc; best=l; }
   }
-  return {name:best, phone:phone, address:addr, cat:guessCat(t)};
+  return {name:best, person:person, phone:phone, cat:guessCat(t)};
 }
 /* GPS capture. Address comes from OpenStreetMap, which is free and needs no key.
    Phone numbers are rarely mapped, so we hand you a one tap search instead. */
@@ -2256,7 +2270,7 @@ document.getElementById("parsebtn").addEventListener("click",function(){
   var o=parseText(t);
   if(o.name) document.getElementById("f_n").value=o.name;
   if(o.phone) document.getElementById("f_p").value=o.phone;
-  if(o.address) document.getElementById("f_a").value=o.address;
+  if(o.person) document.getElementById("f_o").value=o.person;
   if(o.cat) fillCats(o.cat);
   if(!o.name && !o.phone){ setStatus("Could not spot a name or number. Type them in.",true); return; }
   var dp=findDupes(o.name||"", o.phone||"", null);
@@ -2368,10 +2382,10 @@ function readImage(dataUrl){
       document.getElementById("f_paste").value=txt;
       document.getElementById("pastewrap").style.display="block";
       var o=parseText(txt);
-      if(o.name)    document.getElementById("f_n").value=o.name;
-      if(o.phone)   document.getElementById("f_p").value=o.phone;
-      if(o.address) document.getElementById("f_a").value=o.address;
-      if(o.cat)     fillCats(o.cat);
+      if(o.name)   document.getElementById("f_n").value=o.name;
+      if(o.phone)  document.getElementById("f_p").value=o.phone;
+      if(o.person) document.getElementById("f_o").value=o.person;
+      if(o.cat)    fillCats(o.cat);
       if(!o.name && !o.phone){
         setStatus("Read the image but could not pick out a name or number. The raw text is below.", true);
         return;
