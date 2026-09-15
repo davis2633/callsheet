@@ -97,7 +97,6 @@ input:focus,select:focus{outline:2px solid var(--brass); outline-offset:1px}
 .rbtn{flex:1; padding:12px 6px; border:1px solid var(--line); border-radius:9px;
   background:var(--card); font:inherit; font-size:14px; color:var(--ink)}
 .rbtn.danger{color:var(--alert); border-color:#E3CFC9}
-.rbtn.armed{background:var(--alert); color:#fff; border-color:var(--alert); font-weight:600}
 .rbtn.wide{width:100%; margin-bottom:16px}
 .lookbtn{flex:0 0 62px; display:flex; align-items:center; justify-content:center;
   border:1px solid var(--line); border-radius:9px; background:var(--ink); color:#fff;
@@ -149,6 +148,29 @@ textarea:focus{outline:2px solid var(--brass); outline-offset:1px}
   background:var(--brass-sf); border-radius:5px; padding:2px 7px; margin-top:5px; display:inline-block}
 .olist button[aria-pressed=true] em{background:rgba(255,255,255,.16); color:#fff}
 .olist button.brass[aria-pressed=true] em{background:rgba(26,26,22,.14); color:#1A1A16}
+.daystrip{display:flex; gap:7px; overflow-x:auto; padding-bottom:10px; margin-bottom:10px; scrollbar-width:none}
+.daystrip::-webkit-scrollbar{display:none}
+.daystrip button{flex:0 0 auto; padding:9px 12px; border:1px solid var(--line); border-radius:9px;
+  background:var(--card); font:inherit; font-size:13px; color:var(--ink); text-align:center; line-height:1.3}
+.daystrip button b{display:block; font-size:15px; font-weight:600}
+.daystrip button i{font-style:normal; font-size:11px; color:var(--mute)}
+.daystrip button[aria-pressed=true]{background:var(--ink); border-color:var(--ink); color:#fff}
+.daystrip button[aria-pressed=true] i{color:rgba(255,255,255,.72)}
+.slotgrid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-bottom:14px}
+.slotgrid button{padding:11px 4px; border:1px solid var(--line); border-radius:9px; background:var(--card);
+  font:inherit; font-size:14px; color:var(--ink); font-variant-numeric:tabular-nums}
+.slotgrid button[aria-pressed=true]{background:var(--brass); border-color:var(--brass); color:#1A1A16; font-weight:600}
+.slotgrid button.taken{background:#F2F0EC; color:var(--mute); border-style:dashed}
+.slotgrid button.taken b{display:block; font-size:10px; font-weight:600; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap}
+.dday{margin:16px 0 6px; font-size:13px; font-weight:650; color:var(--ink);
+  border-bottom:1px solid var(--line); padding-bottom:5px; display:flex; justify-content:space-between}
+.dday span{font-weight:400; color:var(--mute)}
+.dslot{display:flex; gap:10px; padding:10px 2px; border-bottom:1px solid var(--line); font-size:14px; width:100%;
+  background:transparent; border-left:0; border-right:0; border-top:0; font-family:inherit; text-align:left; color:var(--ink)}
+.dslot time{flex:0 0 76px; font-variant-numeric:tabular-nums; color:var(--mute)}
+.dslot b{font-weight:600; display:block}
+.dslot em{font-style:normal; color:var(--mute); font-size:12px; display:block}
 .quick{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px}
 .quick button{padding:12px 8px; border:1px solid var(--line); border-radius:9px; background:var(--card);
   font:inherit; font-size:14px; color:var(--ink); text-align:left}
@@ -176,6 +198,18 @@ textarea:focus{outline:2px solid var(--brass); outline-offset:1px}
   opacity:0; transform:translateY(8px); transition:opacity .18s, transform .18s}
 #toast.on{opacity:1; transform:translateY(0)}
 main{padding:10px 12px 100px; max-width:640px; margin:0 auto}
+.upnext{position:sticky; top:0; z-index:16; display:flex; align-items:stretch; gap:0;
+  background:var(--ink); color:#fff; box-shadow:0 2px 8px rgba(21,24,28,.25)}
+.upnext .un{flex:1; min-width:0; padding:10px 13px; text-align:left; background:transparent;
+  border:0; color:#fff; font:inherit}
+.upnext .lbl{font-size:10.5px; letter-spacing:.14em; color:var(--brass); font-weight:700}
+.upnext .nm{font-size:16px; font-weight:600; margin-top:2px; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap}
+.upnext .sub{font-size:12px; color:rgba(255,255,255,.66); margin-top:1px}
+.upnext a.go{flex:0 0 78px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:3px; background:var(--brass); color:#1A1A16; text-decoration:none; font-size:11px;
+  font-weight:700; letter-spacing:.08em}
+.upnext a.go svg{width:20px; height:20px; fill:currentColor}
 .band{position:sticky; top:0; z-index:14; margin:14px -12px 10px; padding:11px 14px 9px;
   background:var(--green); color:#fff; box-shadow:0 2px 6px rgba(14,31,24,.18)}
 .band:first-child{margin-top:2px}
@@ -234,15 +268,15 @@ main{padding:10px 12px 100px; max-width:640px; margin:0 auto}
 .empty{text-align:center; color:var(--mute); padding:46px 20px; font-size:15px}
 .clear{display:block; margin:22px auto 40px; padding:11px 18px; border:1px solid var(--line);
   background:var(--card); border-radius:8px; font:inherit; font-size:14px; color:var(--ink)}
-.clear.armed{background:var(--alert); color:#fff; border-color:var(--alert); font-weight:600}
 footer{position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line);
   padding:9px 12px calc(9px + env(safe-area-inset-bottom)); display:flex; gap:9px; z-index:15}
-footer button{flex:1; padding:13px 6px; border-radius:9px; border:1px solid var(--line);
+footer button{flex:1; padding:13px 3px; font-size:13.5px; border-radius:9px; border:1px solid var(--line);
   background:var(--card); font:inherit; font-size:14px; color:var(--ink)}
 footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600}
 .sheet{position:fixed; inset:0; background:rgba(21,24,28,.55); z-index:40; display:none;
   align-items:flex-end}
 #exp{z-index:68}
+#diary{z-index:58}
 #sched{z-index:60}
 #deal{z-index:62}
 #dupe{z-index:66}
@@ -261,7 +295,8 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
 .actions button{flex:1; padding:13px; border-radius:9px; font:inherit; font-size:15px;
   border:1px solid var(--line); background:var(--card); color:var(--ink)}
 .actions button.primary{background:var(--ink); color:#fff; border-color:var(--ink); font-weight:600}
-.actions button.danger{background:transparent; color:var(--alert); border-color:var(--line); flex:0 0 92px}
+.actions button.danger{background:var(--alert); color:#fff; border-color:var(--alert); font-weight:600}
+.actions button#del.danger{background:transparent; color:var(--alert); border-color:var(--line); flex:0 0 92px}
 .shots{display:flex; gap:8px; margin-bottom:2px}
 .shots .shot{flex:1}
 .shot.wide{margin-bottom:10px; padding:14px 10px}
@@ -290,10 +325,12 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
   <span>This copy cannot store data. In Shortcuts, put <b>x-safari-</b> in front of the link so it opens in Safari instead of the Claude app. Then everything saves.</span>
 </div>
 <div class="chips" id="chips"></div>
+<div id="upnext" class="upnext" style="display:none"></div>
 <main id="list"></main>
 <footer>
   <button id="scan">Prospect</button>
-  <button id="next" class="primary">Next uncalled</button>
+  <button id="next" class="primary">Next</button>
+  <button id="diarybtn">Diary</button>
   <button id="statsbtn">Stats</button>
 </footer>
 
@@ -463,10 +500,22 @@ footer button.primary{background:var(--ink); color:#fff; border-color:var(--ink)
   </div>
 </div>
 
+<div class="sheet" id="diary">
+  <div class="panel">
+    <h2>Diary</h2>
+    <p class="sub" id="diasub"></p>
+    <div id="diabody"></div>
+    <div class="actions"><button id="diaclose" class="primary">Done</button></div>
+  </div>
+</div>
+
 <div class="sheet" id="sched">
   <div class="panel">
     <h2 id="schtitle">When?</h2>
     <p class="sub" id="schsub"></p>
+    <div class="daystrip" id="daystrip"></div>
+    <div class="slotgrid" id="slotgrid"></div>
+    <div class="sh">Or jump ahead</div>
     <div class="quick" id="quick"></div>
     <div class="field"><label for="f_date">Or pick a date and time</label>
       <div class="dt"><input type="date" id="f_date"><input type="time" id="f_time" value="09:00"></div></div>
@@ -1013,6 +1062,7 @@ function render(){
             : q    ? "No match for that search."
             : "Nothing matches. Clear the filter to see everything.";
     list.innerHTML='<p class="empty">'+msg+'</p>';
+    paintUpNext();
     tally(); return;
   }
   if(dueF){
@@ -1032,7 +1082,8 @@ function render(){
       }
       hh+=rowHTML(r);
     });
-    list.innerHTML=hh+'<button class="clear" id="clear">Clear all marks</button>';
+    list.innerHTML=hh;
+    paintUpNext();
     tally(); return;
   }
   var ORD={early:0,midday:1,lunch:2,afternoon:3,late:4};
@@ -1081,10 +1132,35 @@ function render(){
     }
     h+=rowHTML(r);
   });
-  h+='<button class="clear" id="clear">Clear all marks</button>';
+
   list.innerHTML=h;
+  paintUpNext();
   tally();
 }
+function paintUpNext(){
+  var el=document.getElementById("upnext");
+  var rows=visible();
+  var nxt=null;
+  for(var i=0;i<rows.length;i++){
+    var m=marks[rows[i].i];
+    if(!(m && m.s)){ nxt=rows[i]; break; }
+  }
+  if(!nxt || !nxt.d){ el.style.display="none"; el.innerHTML=""; return; }
+  var left=rows.filter(function(r){ var m=marks[r.i]; return !(m&&m.s); }).length;
+  el.style.display="flex";
+  el.innerHTML='<button class="un" data-go="'+esc(nxt.i)+'">'
+    + '<div class="lbl">UP NEXT</div>'
+    + '<div class="nm">'+esc(nxt.n)+'</div>'
+    + '<div class="sub">'+esc(nxt.c)+' \u00b7 '+esc(nxt.p)+' \u00b7 '+left+' still to call</div>'
+    + '</button>'
+    + '<a class="go" href="tel:'+nxt.d+'" aria-label="Call '+esc(nxt.n)+'">'+PH+'<span>CALL</span></a>';
+}
+document.getElementById("upnext").addEventListener("click",function(e){
+  var b=e.target.closest("[data-go]"); if(!b) return;
+  var el=document.querySelector('.row[data-i="'+b.dataset.go+'"]');
+  if(el) el.scrollIntoView({block:"center",behavior:"smooth"});
+});
+
 function tally(){
   var rows=allRows();
   if(dayF!=="all") rows=rows.filter(function(r){return r.y===dayF});
@@ -1114,14 +1190,6 @@ function tally(){
 }
 
 document.getElementById("list").addEventListener("click",function(e){
-  if(e.target.id==="clear"){
-    arm(e.target,"Clear all marks",function(){
-      stashUndo();
-      marks={}; writeNow(); render();
-      toast("Marks cleared \u00b7 businesses kept. Undo is in Stats.");
-    });
-    return;
-  }
   var b=e.target.closest(".marks button"); if(!b) return;
   var id=b.closest(".row").dataset.i;
   if(b.dataset.edit){ openEdit(id); return; }
@@ -1195,7 +1263,9 @@ var cfEl=document.getElementById("confirm"), cfFn=null;
 function ask(title,msg,yes,fn){
   document.getElementById("cftitle").textContent=title;
   document.getElementById("cfmsg").textContent=msg;
-  document.getElementById("cfyes").textContent=yes||"Yes";
+  var yb=document.getElementById("cfyes");
+  yb.textContent=yes||"Yes";
+  yb.className = /clear|reset|delete|remove/i.test(yes||"") ? "danger" : "primary";
   cfFn=fn; cfEl.classList.add("on");
 }
 document.getElementById("cfno").addEventListener("click",function(){ cfEl.classList.remove("on"); cfFn=null; });
@@ -1321,6 +1391,8 @@ function openSched(kind){
   });
   document.getElementById("quick").innerHTML=h;
   document.getElementById("quick").dataset.opts=JSON.stringify(opts.map(function(o){return o.d.toISOString()}));
+  schDay = oDue ? dkey(new Date(oDue)) : dkey(nextWeekdayList(1)[0]);
+  paintDays(); paintSlots();
   var base=schPick||addDays(1,9,0);
   document.getElementById("f_date").value=toLocalInput(base);
   var hh=base.getHours(), mm=base.getMinutes();
@@ -1337,6 +1409,131 @@ document.getElementById("quick").addEventListener("click",function(e){
   document.getElementById("f_time").value=(hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm;
   schPick=d;
 });
+
+/* ---------- diary ----------
+   Every booked presentation or follow up occupies an hour. Slots already taken
+   are shown so you cannot book two things at once. */
+var WORKH=[8,9,10,11,12,13,14,15,16,17];
+function hourLabel(n){
+  var ap=n>=12?"pm":"am", h12=n%12; if(h12===0) h12=12;
+  return h12+ap;
+}
+function dkey(d){
+  var m=d.getMonth()+1, dy=d.getDate();
+  return d.getFullYear()+"-"+(m<10?"0":"")+m+"-"+(dy<10?"0":"")+dy;
+}
+function bookings(){
+  var out=[];
+  allRows().forEach(function(r){
+    var m=marks[r.i];
+    if(!(m && m.due && (isInterest(m.s) || m.s==="noans"))) return;
+    var d=new Date(m.due);
+    if(isNaN(d)) return;
+    out.push({i:r.i, n:r.n, p:r.p, kind:(m.s==="appt"?"Presentation":m.s==="sold"?"Signed":"Follow up"),
+              d:d, key:dkey(d), hour:d.getHours(), min:d.getMinutes()});
+  });
+  out.sort(function(a,b){ return a.d-b.d; });
+  return out;
+}
+function bookedOn(key){
+  return bookings().filter(function(b){ return b.key===key; });
+}
+function nextWeekdayList(n){
+  var out=[], d=new Date();
+  for(var i=0; out.length<n && i<40; i++){
+    var x=new Date(); x.setDate(d.getDate()+i);
+    if(x.getDay()>=1 && x.getDay()<=5) out.push(x);
+  }
+  return out;
+}
+var schDay=null;
+function paintDays(){
+  var days=nextWeekdayList(10), h="";
+  if(!schDay) schDay=dkey(days[0]);
+  days.forEach(function(x){
+    var k=dkey(x), taken=bookedOn(k).length, free=WORKH.length-taken;
+    h+='<button data-k="'+k+'" aria-pressed="'+(schDay===k)+'">'
+      + '<b>'+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][x.getDay()]+' '+x.getDate()+'</b>'
+      + '<i>'+(taken? taken+" booked" : free+" free")+'</i></button>';
+  });
+  document.getElementById("daystrip").innerHTML=h;
+}
+function paintSlots(){
+  var taken=bookedOn(schDay), byHour={};
+  taken.forEach(function(b){ byHour[b.hour]=b; });
+  var chosen=oDue?new Date(oDue):null;
+  var chosenKey=chosen?dkey(chosen):"";
+  var h="";
+  WORKH.forEach(function(n){
+    var b=byHour[n];
+    var on = chosen && chosenKey===schDay && chosen.getHours()===n;
+    if(b && (!oRow || b.i!==oRow.i)){
+      h+='<button class="taken" data-h="'+n+'" aria-pressed="false">'+hourLabel(n)
+        +'<b>'+esc(b.n.length>13?b.n.slice(0,12)+"\u2026":b.n)+'</b></button>';
+    } else {
+      h+='<button data-h="'+n+'" aria-pressed="'+on+'">'+hourLabel(n)+'</button>';
+    }
+  });
+  document.getElementById("slotgrid").innerHTML=h;
+}
+document.getElementById("daystrip").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  schDay=b.dataset.k; paintDays(); paintSlots();
+});
+document.getElementById("slotgrid").addEventListener("click",function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  if(b.classList.contains("taken")){ toast("That hour is already booked"); return; }
+  var p=schDay.split("-");
+  var d=new Date(+p[0], +p[1]-1, +p[2], +b.dataset.h, 0, 0, 0);
+  oDue=d.toISOString();
+  document.getElementById("f_date").value=schDay;
+  var hh=d.getHours();
+  document.getElementById("f_time").value=(hh<10?"0":"")+hh+":00";
+  paintSlots();
+  toast((oPick==="appt"?"Presentation ":"Follow up ")+fmtDue(oDue));
+});
+
+/* diary view */
+var diaEl=document.getElementById("diary");
+function openDiary(){
+  var list=bookings();
+  var over=list.filter(function(b){ return dueState(b.d.toISOString())==="over"; }).length;
+  document.getElementById("diasub").textContent =
+    list.length ? list.length+" booked"+(over? ", "+over+" already past":"")
+                : "Nothing booked yet. Anything you schedule shows up here.";
+  var days=nextWeekdayList(10), h="";
+  var past=list.filter(function(b){ return dueState(b.d.toISOString())==="over"; });
+  if(past.length){
+    h+='<div class="dday">OVERDUE<span>'+past.length+'</span></div>';
+    past.forEach(function(b){
+      h+='<button class="dslot" data-i="'+esc(b.i)+'"><time>'+esc(fmtDue(b.d.toISOString()))
+        +'</time><span><b>'+esc(b.n)+'</b><em>'+b.kind+'</em></span></button>';
+    });
+  }
+  days.forEach(function(x){
+    var k=dkey(x), on=bookedOn(k).filter(function(b){ return dueState(b.d.toISOString())!=="over"; });
+    h+='<div class="dday">'+["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][x.getDay()]+' '+x.getDate()+' '
+      + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][x.getMonth()]
+      + '<span>'+(on.length? on.length+" booked \u00b7 "+(WORKH.length-on.length)+" free" : "clear")+'</span></div>';
+    on.forEach(function(b){
+      h+='<button class="dslot" data-i="'+esc(b.i)+'"><time>'+hourLabel(b.hour)
+        + (b.min? ":"+(b.min<10?"0":"")+b.min : "") +'</time><span><b>'+esc(b.n)+'</b><em>'
+        + b.kind + (b.p? " \u00b7 "+esc(b.p) : "") + '</em></span></button>';
+    });
+  });
+  document.getElementById("diabody").innerHTML=h;
+  diaEl.classList.add("on");
+}
+document.getElementById("diarybtn").addEventListener("click",openDiary);
+document.getElementById("diaclose").addEventListener("click",function(){ diaEl.classList.remove("on") });
+diaEl.addEventListener("click",function(e){ if(e.target===diaEl) diaEl.classList.remove("on") });
+document.getElementById("diabody").addEventListener("click",function(e){
+  var b=e.target.closest(".dslot"); if(!b) return;
+  var r=allRows().filter(function(x){ return x.i===b.dataset.i; })[0];
+  diaEl.classList.remove("on");
+  if(r) openOutcome(r);
+});
+
 document.getElementById("schskip").addEventListener("click",function(){
   oDue=null; schEl.classList.remove("on"); paintOutcome();
 });
@@ -1731,11 +1928,11 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 build 12 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 15 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
-  rd.textContent="Reset today's stats"; rd.dataset.armed=""; rd.classList.remove("armed");
-  ra.textContent="Reset all stats"; ra.dataset.armed=""; ra.classList.remove("armed");
+  rd.textContent="Reset today's stats";
+  ra.textContent="Reset all stats";
   var ub=document.getElementById("undobtn");
   ub.style.display = undoSnap ? "block" : "none";
   var lb=document.getElementById("slearn");
@@ -1787,20 +1984,8 @@ function stashUndo(){
   var u=document.getElementById("undobtn"); if(u) u.style.display="block";
 }
 
-/* two-tap reset: no dialog involved, so nothing can render behind anything */
-var armT=null;
-function arm(btn, label, run){
-  if(btn.dataset.armed==="1"){
-    clearTimeout(armT); btn.dataset.armed=""; btn.classList.remove("armed"); btn.textContent=label;
-    run(); return;
-  }
-  btn.dataset.armed="1"; btn.classList.add("armed"); btn.textContent="Tap again to confirm";
-  clearTimeout(armT);
-  armT=setTimeout(function(){ btn.dataset.armed=""; btn.classList.remove("armed"); btn.textContent=label; }, 4000);
-}
 document.getElementById("rday").addEventListener("click",function(){
-  var b=this;
-  arm(b,"Reset today's stats",function(){
+  ask("Reset today's stats?","Clears every outcome, note and callback you logged today, and today's call log. Businesses you added are kept.","Reset today",function(){
     stashUndo();
     var k=todayKey(), n=0;
     for(var id in marks){ if(marks[id] && marks[id].dt===k){ delete marks[id]; n++; } }
@@ -1810,8 +1995,7 @@ document.getElementById("rday").addEventListener("click",function(){
   });
 });
 document.getElementById("rall").addEventListener("click",function(){
-  var b=this;
-  arm(b,"Reset all stats",function(){
+  ask("Reset all stats?","Clears every outcome, note, callback and the whole call log. All "+allRows().length+" businesses stay, including the "+custom.length+" you added.","Reset everything",function(){
     stashUndo();
     marks={}; log=[]; targets={};          /* custom and over are deliberately untouched */
     writeNow(); openStats(); render();
@@ -1942,7 +2126,7 @@ function paintCycle(){
 }
 document.getElementById("cycbox").addEventListener("click",function(e){
   var b=e.target.closest("#cycbtn"); if(!b) return;
-  arm(b,"Plan cycle "+(cycleNo()+1),function(){
+  ask("Plan cycle "+(cycleNo()+1)+"?","Everything still worth calling gets re-sorted by what is working and spread across new days.","Plan it",function(){
     var pool=allRows().filter(function(r){ return !isDead(marks[r.i]) && r.d; });
     var c=planCycle(Math.max(20,Math.round(pool.length/9)));
     if(!c){ toast("Nothing left to call"); return; }
@@ -1960,8 +2144,7 @@ document.getElementById("expbtn").addEventListener("click",function(){
 });
 document.getElementById("expclose").addEventListener("click",function(){ expEl.classList.remove("on") });
 document.getElementById("exprestore").addEventListener("click",function(){
-  var b=this;
-  arm(b,"Restore",function(){
+  ask("Restore this backup?","It replaces everything currently in the app with what is in the box.","Restore",function(){
     var msg=restoreBackup(document.getElementById("expbox").value);
     if(msg){ toast(msg); return; }
     expEl.classList.remove("on"); openStats();
@@ -2020,7 +2203,7 @@ document.getElementById("slearn").addEventListener("click",function(){
   learn=!learn; saveAll(); openStats(); render();
 });
 document.getElementById("sreset").addEventListener("click",function(){
-  arm(this,"Clear call log",function(){
+  ask("Clear the call log?","Outcomes and callbacks stay. Only the timing history used for learning is removed.","Clear log",function(){
     log=[]; saveAll(); openStats(); render(); toast("Call log cleared");
   });
 });
