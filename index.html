@@ -59,6 +59,8 @@ input:focus,select:focus{outline:2px solid var(--brass); outline-offset:1px}
 .chip.cb{border-color:rgba(216,164,58,.7); color:#F0DDB2}
 .chip.cb[aria-pressed=true]{background:var(--brass); color:#1A1A16; border-color:var(--brass); font-weight:600}
 .chip.pick{background:rgba(255,255,255,.08)}
+.chip.near{border-color:rgba(94,158,146,.75); color:#CFE3DE}
+.chip.near[aria-pressed=true]{background:var(--teal); color:#0E1B18; border-color:var(--teal); font-weight:600}
 .chip.due{border-color:rgba(94,158,146,.7); color:#CFE3DE}
 .chip.due[aria-pressed=true]{background:var(--teal); color:#0E1B18; border-color:var(--teal); font-weight:600}
 .chip.due.urgent{border-color:rgba(200,129,82,.85); color:#F0D6C4}
@@ -800,6 +802,36 @@ function ownerQuery(r){
   var extra = BOARD[r.c] ? " owner licence" : " owner OR president";
   return encodeURIComponent('"'+r.n+'" '+(r.a?r.a.split(",")[1]||"":"")+extra);
 }
+var ZIPLL={"77478": [29.6197, -95.6349], "77479": [29.5636, -95.6035], "77477": [29.6272, -95.5691], "77498": [29.6494, -95.6664], "77459": [29.523, -95.538], "77489": [29.6155, -95.538], "77406": [29.65, -95.78], "77407": [29.69, -95.73], "77469": [29.54, -95.73], "77471": [29.55, -95.81], "77545": [29.53, -95.45], "77494": [29.74, -95.83], "77493": [29.83, -95.83], "77450": [29.75, -95.74], "77487": [29.62, -95.63], "77496": [29.62, -95.63], "77083": [29.69, -95.65], "77099": [29.66, -95.58], "77074": [29.69, -95.5], "77042": [29.74, -95.56], "77036": [29.7, -95.54], "77031": [29.66, -95.53], "77027": [29.74, -95.44], "77002": [29.755, -95.365], "77056": [29.745, -95.465], "77057": [29.742, -95.488], "77098": [29.735, -95.41], "77024": [29.77, -95.52], "77079": [29.78, -95.59], "77077": [29.75, -95.62], "77441": [29.69, -95.89], "77583": [29.45, -95.43], "77461": [29.4, -95.84], "77584": [29.56, -95.36], "77091": [29.86, -95.44], "77040": [29.87, -95.53], "77019": [29.755, -95.405], "77084": [29.84, -95.65], "77063": [29.735, -95.525], "77072": [29.69, -95.59], "77096": [29.68, -95.48], "77401": [29.705, -95.46]};
+
+var myPos=null, radius=5.5, nearOn=false;
+function zipOf(a){
+  var m=String(a||"").match(/\bTX\s+(\d{5})\b/);
+  if(m) return m[1];
+  var all=String(a||"").match(/\b\d{5}\b/g);
+  return all ? all[all.length-1] : null;
+}
+function milesBetween(a,b){
+  var R=3958.8, p1=a[0]*Math.PI/180, p2=b[0]*Math.PI/180;
+  var dp=p2-p1, dl=(b[1]-a[1])*Math.PI/180;
+  var x=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);
+  return 2*R*Math.asin(Math.sqrt(x));
+}
+function distOf(r){
+  if(!myPos) return null;
+  var z=zipOf(r.a); if(!z || !ZIPLL[z]) return null;
+  return milesBetween(myPos, ZIPLL[z]);
+}
+function askPos(cb){
+  if(myPos) return cb(true);
+  if(!navigator.geolocation){ toast("This browser will not share your location"); return cb(false); }
+  toast("Finding you\u2026");
+  navigator.geolocation.getCurrentPosition(function(p){
+    myPos=[p.coords.latitude, p.coords.longitude]; cb(true);
+  }, function(){ toast("Could not get your location"); cb(false); },
+  {enableHighAccuracy:true, timeout:12000, maximumAge:120000});
+}
+
 function srcShort(x){
   return ({"Chamber directory":"CHAMBER","Google Maps":"MAPS","Business card":"CARD",
     "Magazine or flyer ad":"AD","Referral":"REFERRAL","Runs paid ads":"PAID ADS","Yard sign or vehicle":"SIGN",
@@ -944,6 +976,7 @@ function allRows(){
 }
 function visible(){
   return allRows().filter(function(r){
+    if(nearOn){ var dd=distOf(r); if(dd===null || dd>radius) return false; }
     var mk=marks[r.i];
     if(dueF){ if(!(mk&&mk.due&&(isInterest(mk.s)||mk.s==="noans"))) return false; }
     if(cbF){ if(!(mk&&mk.s==="noans")) return false; }
@@ -987,6 +1020,8 @@ function buildChips(){
   }
   h+='<button class="chip pick" data-pick="1" aria-pressed="'+(filter!=="all")+'">'
     + (filter==="all" ? "Category \u25be" : esc(filter)+" \u00d7") + '</button>';
+  h+='<button class="chip near'+(nearOn?" on":"")+'" data-near="1" aria-pressed="'+nearOn+'">'
+    + (nearOn ? "Within "+radius+" mi" : "Near me") + '</button>';
   h+='<button class="chip pick" data-src="1" aria-pressed="'+(srcF!=="all")+'">'
     + (srcF==="all" ? "Source \u25be" : esc(srcShort(srcF))+" \u00d7") + '</button>';
   chips.innerHTML=h;
@@ -1001,6 +1036,23 @@ document.getElementById("chips").addEventListener("click",function(e){
   if(b.dataset.src){
     if(srcF!=="all"){ srcF="all"; buildChips(); render(); return; }
     openSrcPicker(); return;
+  }
+  if(b.dataset.near){
+    /* tapping cycles the radius, then switches it off */
+    var STEPS=[3,5.5,8,12];
+    function applyNear(){
+      buildChips(); render();
+      var n=allRows().filter(function(r){ var d=distOf(r); return d!==null && d<=radius; }).length;
+      toast(n+" within "+radius+" miles of you");
+    }
+    if(!nearOn){
+      askPos(function(ok){ if(!ok) return; nearOn=true; radius=5.5; applyNear(); });
+      return;
+    }
+    var ix=STEPS.indexOf(radius);
+    if(ix<0 || ix===STEPS.length-1){ nearOn=false; buildChips(); render(); toast("Radius off"); return; }
+    radius=STEPS[ix+1]; applyNear();
+    return;
   }
   if(b.dataset.due){
     dueF=!dueF;
@@ -1928,7 +1980,7 @@ function openStats(){
   }
   document.getElementById("sbody").innerHTML=h;
   document.getElementById("buildstamp").textContent =
-    "Call Sheet \u00b7 build 15 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
+    "Call Sheet \u00b7 build 16 \u00b7 cycle "+cycleNo()+" \u00b7 "+allRows().length+" contacts \u00b7 starts 15 Sep";
   paintCycle();
   var rd=document.getElementById("rday"), ra=document.getElementById("rall");
   rd.textContent="Reset today's stats";
